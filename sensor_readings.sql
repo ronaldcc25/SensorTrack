@@ -14,6 +14,10 @@ CREATE TABLE IF NOT EXISTS sensor_readings (
 -- Habilitar Row Level Security (RLS)
 ALTER TABLE sensor_readings ENABLE ROW LEVEL SECURITY;
 
+-- Otorgar permisos al rol anon sobre el esquema y la tabla
+GRANT USAGE ON SCHEMA public TO anon;
+GRANT SELECT, INSERT ON TABLE public.sensor_readings TO anon;
+
 -- Politica para permitir lectura publica (rol anon)
 CREATE POLICY "Permitir lectura publica"
 ON sensor_readings
