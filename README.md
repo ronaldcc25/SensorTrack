@@ -50,7 +50,6 @@ Aplicación móvil desarrollada en **Flutter y Dart** para la asignatura **Desar
 taller_sensortrack/
 ├── android/app/src/main/AndroidManifest.xml   # Permisos INTERNET y ubicación GPS
 ├── sensor_readings.sql                        # Script SQL (tabla, RLS y permisos GRANT)
-├── docs/capturas/                             # Capturas de código para documentación/Wiki
 └── lib/
     ├── main.dart                              # Inicialización de Supabase y MaterialApp
     ├── splash.dart                            # Pantalla Splash SensorTrack
