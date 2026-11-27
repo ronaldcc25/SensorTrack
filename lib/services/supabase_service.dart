@@ -22,6 +22,16 @@ Future<void> guardarAcelerometro(double x, double y, double z) async {
   });
 }
 
+// Registra en la tabla existente un evento de aceleracion brusca.
+Future<void> guardarEventoAceleracion(double x, double y, double z) async {
+  await supabase.from('sensor_readings').insert({
+    'sensor_type': 'acceleration_event',
+    'x': x,
+    'y': y,
+    'z': z,
+  });
+}
+
 // Guarda una medicion del giroscopio en Supabase
 Future<void> guardarGiroscopio(double x, double y, double z) async {
   await supabase.from('sensor_readings').insert({
@@ -78,6 +88,8 @@ String nombreSensor(String? sensorType) {
   switch (sensorType) {
     case 'accelerometer':
       return 'Acelerómetro';
+    case 'acceleration_event':
+      return 'Aceleración brusca';
     case 'gyroscope':
       return 'Giroscopio';
     case 'gps':

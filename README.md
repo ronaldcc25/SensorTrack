@@ -13,6 +13,8 @@ Aplicación móvil desarrollada en **Flutter y Dart** para la asignatura **Desar
    - Menú de navegación inferior de 5 pestañas y accesos rápidos.
 2. **Monitoreo de Sensores (`sensores_page.dart`)**
    - Lectura en tiempo real de los ejes **X, Y, Z** del **Acelerómetro** (`m/s²`) y del **Giroscopio** (`rad/s`) mediante `sensors_plus`.
+   - Detección automática de aceleración brusca usando aceleración lineal (sin gravedad), con umbral de **15 m/s²** (aprox. **1,5 g**) y alerta visual.
+   - Cada alerta se registra como `acceleration_event` en `sensor_readings` y aparece en el historial. El umbral es inicial, pensado para ignorar movimientos cotidianos; debe validarse con el dispositivo y el uso esperado.
    - Control para **Iniciar / Detener monitoreo** y liberación automática de suscripciones en `dispose()`.
    - Botón **Guardar medición** en Supabase con manejo de errores (`try/catch` + `SnackBar`).
 3. **Ubicación GPS (`ubicacion_page.dart`)**
@@ -54,7 +56,8 @@ taller_sensortrack/
     ├── main.dart                              # Inicialización de Supabase y MaterialApp
     ├── splash.dart                            # Pantalla Splash SensorTrack
     ├── services/
-    │   └── supabase_service.dart              # Conexión, INSERT, SELECT y formateo
+    │   ├── abrupt_acceleration_detector.dart # Detección de aceleración brusca
+    │   └── supabase_service.dart             # Conexión, INSERT, SELECT y formateo
     └── pages/
         ├── mainpage.dart                      # IndexedStack + BottomNavigationBar
         ├── home_page.dart                     # Inicio, conexión y sensores disponibles

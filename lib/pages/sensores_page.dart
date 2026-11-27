@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:taller_sensortrack/services/abrupt_acceleration_detector.dart';
 import 'package:taller_sensortrack/services/supabase_service.dart';
 
 class SensoresPage extends StatefulWidget {
@@ -27,9 +28,12 @@ class _SensoresPageState extends State<SensoresPage> {
   bool guardandoGyro = false;
   String? errorAcelerometro;
   String? errorGiroscopio;
+  String? errorDeteccion;
 
   StreamSubscription<AccelerometerEvent>? _accSubscription;
+  StreamSubscription<UserAccelerometerEvent>? _linearAccSubscription;
   StreamSubscription<GyroscopeEvent>? _gyroSubscription;
+  final AbruptAccelerationDetector _detector = AbruptAccelerationDetector();
 
   @override
   void initState() {
@@ -39,12 +43,15 @@ class _SensoresPageState extends State<SensoresPage> {
 
   void _iniciarMonitoreo() {
     _accSubscription?.cancel();
+    _linearAccSubscription?.cancel();
     _gyroSubscription?.cancel();
+    _detector.reset();
 
     setState(() {
       monitoreando = true;
       errorAcelerometro = null;
       errorGiroscopio = null;
+      errorDeteccion = null;
     });
 
     _accSubscription = accelerometerEventStream().listen(
@@ -63,6 +70,20 @@ class _SensoresPageState extends State<SensoresPage> {
         });
       },
     );
+
+    _linearAccSubscription =
+        userAccelerometerEventStream(
+          samplingPeriod: SensorInterval.gameInterval,
+        ).listen(
+          _analizarAceleracion,
+          onError: (error) {
+            if (!mounted) return;
+            setState(() {
+              errorDeteccion =
+                  'No se pudo analizar la aceleración lineal del dispositivo.';
+            });
+          },
+        );
 
     _gyroSubscription = gyroscopeEventStream().listen(
       (event) {
@@ -84,13 +105,64 @@ class _SensoresPageState extends State<SensoresPage> {
 
   void _detenerMonitoreo() {
     _accSubscription?.cancel();
+    _linearAccSubscription?.cancel();
     _gyroSubscription?.cancel();
     _accSubscription = null;
+    _linearAccSubscription = null;
     _gyroSubscription = null;
+    _detector.reset();
 
     setState(() {
       monitoreando = false;
     });
+  }
+
+  void _analizarAceleracion(UserAccelerometerEvent event) {
+    if (!_detector.addSample(event.x, event.y, event.z)) return;
+
+    final magnitude = AbruptAccelerationDetector.magnitudeMps2(
+      event.x,
+      event.y,
+      event.z,
+    );
+    if (!mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.deepOrange,
+          content: Text(
+            '¡Aceleración brusca detectada! '
+            '${magnitude.toStringAsFixed(2)} m/s²',
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+
+    unawaited(_registrarEventoAceleracion(event));
+  }
+
+  Future<void> _registrarEventoAceleracion(UserAccelerometerEvent event) async {
+    try {
+      await guardarEventoAceleracion(event.x, event.y, event.z);
+    } catch (error) {
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red,
+            content: Text(
+              'Se detectó el evento, pero no se pudo guardar en Supabase: '
+              '$error',
+            ),
+            duration: const Duration(seconds: 6),
+          ),
+        );
+    }
   }
 
   Future<void> _guardarMedicionAcelerometro() async {
@@ -158,6 +230,7 @@ class _SensoresPageState extends State<SensoresPage> {
   @override
   void dispose() {
     _accSubscription?.cancel();
+    _linearAccSubscription?.cancel();
     _gyroSubscription?.cancel();
     super.dispose();
   }
@@ -184,6 +257,28 @@ class _SensoresPageState extends State<SensoresPage> {
             ),
           ),
           const SizedBox(height: 16),
+
+          Card(
+            color: Colors.amber.shade50,
+            child: const ListTile(
+              leading: Icon(Icons.info_outline, color: Colors.deepOrange),
+              title: Text('Detección de aceleración brusca'),
+              subtitle: Text(
+                'Se analiza la aceleración lineal (sin gravedad). '
+                'Umbral: ${AbruptAccelerationDetector.thresholdMps2} m/s² '
+                '(aprox. 1,5 g); se filtran movimientos cotidianos. '
+                'El evento se guarda en Supabase.',
+              ),
+            ),
+          ),
+          if (errorDeteccion != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                errorDeteccion!,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
 
           // Tarjeta del Acelerometro
           Card(

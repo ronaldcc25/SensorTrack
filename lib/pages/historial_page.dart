@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:taller_sensortrack/services/abrupt_acceleration_detector.dart';
 import 'package:taller_sensortrack/services/supabase_service.dart';
 
 class HistorialPage extends StatefulWidget {
@@ -17,6 +20,8 @@ class _HistorialPageState extends State<HistorialPage> {
     switch (tipo) {
       case 'accelerometer':
         return Icons.speed;
+      case 'acceleration_event':
+        return Icons.warning_amber;
       case 'gyroscope':
         return Icons.screen_rotation;
       case 'gps':
@@ -37,6 +42,18 @@ class _HistorialPageState extends State<HistorialPage> {
       final x = (registro['x'] as num?)?.toStringAsFixed(2) ?? '-';
       final y = (registro['y'] as num?)?.toStringAsFixed(2) ?? '-';
       final z = (registro['z'] as num?)?.toStringAsFixed(2) ?? '-';
+      if (tipo == 'acceleration_event' &&
+          registro['x'] is num &&
+          registro['y'] is num &&
+          registro['z'] is num) {
+        final magnitude = math.sqrt(
+          (registro['x'] as num) * (registro['x'] as num) +
+              (registro['y'] as num) * (registro['y'] as num) +
+              (registro['z'] as num) * (registro['z'] as num),
+        );
+        return 'Magnitud: ${magnitude.toStringAsFixed(2)} m/s² | '
+            'Umbral: ${AbruptAccelerationDetector.thresholdMps2} m/s²';
+      }
       return 'X: $x | Y: $y | Z: $z';
     }
   }
@@ -62,6 +79,11 @@ class _HistorialPageState extends State<HistorialPage> {
                 Text('Longitud: ${registro['longitude'] ?? '-'}'),
                 Text('Precisión: ${registro['accuracy'] ?? '-'} m'),
               ] else ...[
+                if (registro['sensor_type'] == 'acceleration_event')
+                  Text(
+                    'Umbral: '
+                    '${AbruptAccelerationDetector.thresholdMps2} m/s²',
+                  ),
                 Text('Eje X: ${registro['x'] ?? '-'}'),
                 Text('Eje Y: ${registro['y'] ?? '-'}'),
                 Text('Eje Z: ${registro['z'] ?? '-'}'),
